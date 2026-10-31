@@ -1279,7 +1279,18 @@ window.$RES = {"string":{"2131492864":"Try Air Control for free","2131492865":"c
   mkEnum("android.graphics.Paint$Align", ["LEFT", "CENTER", "RIGHT"]);
   mkEnum("android.graphics.Paint$Cap", ["BUTT", "ROUND", "SQUARE"]);
 
-  const cssColor = (c) => { const a = (c >>> 24) / 255; return "rgba(" + ((c >> 16) & 255) + "," + ((c >> 8) & 255) + "," + (c & 255) + "," + (a === 1 ? 1 : Math.round(a * 1000) / 1000) + ")"; };
+  const cssCache = new Map();
+  const cssColor = (c) => {
+    let s = cssCache.get(c);
+    if (s === undefined) {
+      const a = (c >>> 24) / 255;
+      s = "rgba(" + ((c >> 16) & 255) + "," + ((c >> 8) & 255) + "," + (c & 255) + "," + (a === 1 ? 1 : Math.round(a * 1000) / 1000) + ")";
+      if (cssCache.size < 8192) cssCache.set(c, s);
+    }
+    return s;
+  };
+  // only touch ctx.fillStyle when the colour really changes (particles/rects call this thousands of times per frame)
+  const setFill = (ctx, c) => { const s = cssColor(c); if (ctx.$fs !== s) { ctx.fillStyle = s; ctx.$fs = s; } };
   class android_graphics_Paint extends java_lang_Object {
     constructor() {
       super(); this.color = 0xFF000000 | 0; this.style = null; this.sw = 0; this.ts = 12; this.align = null; this.tf = null; this.aa = false; this.fb = false; this.pe = null; this.cap = null;
@@ -1343,7 +1354,7 @@ window.$RES = {"string":{"2131492864":"Try Air Control for free","2131492865":"c
     getRowBytes$() { return this.w * (this.cfg === android_graphics_Bitmap$Config.S$ARGB_8888 ? 4 : 2); }
     getByteCount$() { return this.getRowBytes$() * this.h; }
     copy$Bitmap$Config$Z(cfg) { const b = android_graphics_Bitmap.$make(this.w, this.h, cfg); b.ctx.drawImage(this.cv, 0, 0); return b; }
-    eraseColor$I(c) { this.ctx.setTransform(1, 0, 0, 1, 0, 0); this.ctx.clearRect(0, 0, this.w, this.h); if ((c >>> 24) !== 0 || this.cfg === android_graphics_Bitmap$Config.S$RGB_565) { this.ctx.fillStyle = cssColor(c); this.ctx.fillRect(0, 0, this.w, this.h); } }
+    eraseColor$I(c) { this.ctx.setTransform(1, 0, 0, 1, 0, 0); this.ctx.clearRect(0, 0, this.w, this.h); if ((c >>> 24) !== 0 || this.cfg === android_graphics_Bitmap$Config.S$RGB_565) { setFill(this.ctx, c); this.ctx.fillRect(0, 0, this.w, this.h); } }
     getPixel$I$I(x, y) {
       if (x < 0 || y < 0 || x >= this.w || y >= this.h) throw new java_lang_IllegalArgumentException().$init$String("x/y must be < bitmap.width()/height()");
       const d = this.ctx.getImageData(x, y, 1, 1).data; return ((d[3] << 24) | (d[0] << 16) | (d[1] << 8) | d[2]) | 0;
@@ -1438,21 +1449,21 @@ window.$RES = {"string":{"2131492864":"Try Air Control for free","2131492865":"c
     drawRect$F$F$F$F$Paint(l, t, r, b, p) {
       const ctx = this.ctx;
       if (p.style === android_graphics_Paint$Style.S$STROKE) { this.$stroke(p); ctx.strokeRect(l, t, r - l, b - t); ctx.setLineDash([]); }
-      else { ctx.fillStyle = cssColor(p.color); ctx.fillRect(l, t, r - l, b - t); }
+      else { setFill(ctx, p.color); ctx.fillRect(l, t, r - l, b - t); }
     }
     drawRect$Rect$Paint(r, p) { this.drawRect$F$F$F$F$Paint(r.left, r.top, r.right, r.bottom, p); }
     drawCircle$F$F$F$Paint(cx, cy, r, p) {
       const ctx = this.ctx; ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2);
-      if (p.style === android_graphics_Paint$Style.S$STROKE) { this.$stroke(p); ctx.stroke(); ctx.setLineDash([]); } else { ctx.fillStyle = cssColor(p.color); ctx.fill(); }
+      if (p.style === android_graphics_Paint$Style.S$STROKE) { this.$stroke(p); ctx.stroke(); ctx.setLineDash([]); } else { setFill(ctx, p.color); ctx.fill(); }
     }
     drawLine$F$F$F$F$Paint(x0, y0, x1, y1, p) { const ctx = this.ctx; this.$stroke(p); ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke(); ctx.setLineDash([]); }
-    drawPoint$F$F$Paint(x, y, p) { this.ctx.fillStyle = cssColor(p.color); this.ctx.fillRect(x, y, 1, 1); }
+    drawPoint$F$F$Paint(x, y, p) { setFill(this.ctx, p.color); this.ctx.fillRect(x, y, 1, 1); }
     drawText$String$F$F$Paint(t, x, y, p) {
-      const ctx = this.ctx; ctx.font = p.$font(); ctx.fillStyle = cssColor(p.color);
+      const ctx = this.ctx; ctx.font = p.$font(); setFill(ctx, p.color);
       ctx.textAlign = p.align === android_graphics_Paint$Align.S$CENTER ? "center" : p.align === android_graphics_Paint$Align.S$RIGHT ? "right" : "left";
       ctx.textBaseline = "alphabetic"; ctx.fillText(t, x, y);
     }
-    drawColor$I(c) { this.ctx.fillStyle = cssColor(c); this.ctx.fillRect(0, 0, this.w, this.h); }
+    drawColor$I(c) { setFill(this.ctx, c); this.ctx.fillRect(0, 0, this.w, this.h); }
     drawARGB$I$I$I$I(a, r, g, b) { this.drawColor$I(((a & 255) << 24) | ((r & 255) << 16) | ((g & 255) << 8) | (b & 255)); }
     drawRGB$I$I$I(r, g, b) { this.drawARGB$I$I$I$I(255, r, g, b); }
     save$() { this.ctx.save(); return 0; } restore$() { this.ctx.restore(); }
@@ -3837,16 +3848,16 @@ class dk_logisoft_airattack_objects_weapons_RocketLauncher extends d_bwh {
   a$Z(z) {
     (this.f$$RocketLauncher = z);
     if ((this.o$())) {
-      this.a$();
+      this.a$$$RocketLauncher();
       return (dk_logisoft_airattack_objects_weapons_RocketLauncher$RocketUpgrade.$ci?dk_logisoft_airattack_objects_weapons_RocketLauncher$RocketUpgrade:dk_logisoft_airattack_objects_weapons_RocketLauncher$RocketUpgrade.$clinit()).S$DOWNGRADED_ROCKETS;
     }
     return (dk_logisoft_airattack_objects_weapons_RocketLauncher$RocketUpgrade.$ci?dk_logisoft_airattack_objects_weapons_RocketLauncher$RocketUpgrade:dk_logisoft_airattack_objects_weapons_RocketLauncher$RocketUpgrade.$clinit()).S$FULLY_USED;
   }
   j$() {
     (++this.b$$RocketLauncher);
-    this.a$();
+    this.a$$$RocketLauncher();
   }
-  a$() {
+  a$$$RocketLauncher() {
     if ((((!this.f$$RocketLauncher) || (this.b$$RocketLauncher <= 2)))) {
       return;
     }
@@ -5621,7 +5632,7 @@ class d_bvk extends d_bwh {
   }
   b$bwq(bwqVar) {
     (d_bxg.$ci?d_bxg:d_bxg.$clinit()).b$().j$();
-    (this.h$$bvk = this.m$());
+    (this.h$$bvk = this.m$$$bvk());
     bwqVar.b$Z(true);
     this.w.t.a$F$F$AI$I(bwqVar.v$(), bwqVar.w$(), bwqVar.q, 10);
   }
@@ -5637,7 +5648,7 @@ class d_bvk extends d_bwh {
     if (((((this.h$$bvk === 0) || this.F$()) || this.a$$bvk))) {
       return;
     }
-    (d_bzg.$ci?d_bzg:d_bzg.$clinit()).a$Canvas$I$I$I$I$I(canvas, $d2i(this.v$()), (($d2i(this.z$())) + 5 | 0), $idiv(((this.m$() - this.h$$bvk | 0)), this.m$()), (-7829368), (-1));
+    (d_bzg.$ci?d_bzg:d_bzg.$clinit()).a$Canvas$I$I$F$I$I(canvas, $d2i(this.v$()), (($d2i(this.z$())) + 5 | 0), Math.fround((Math.fround(((this.m$$$bvk() - this.h$$bvk | 0)))) / Math.fround(this.m$$$bvk())), (-7829368), (-1));
   }
   c$Canvas(canvas) {
     let i2 = 0;
@@ -5683,7 +5694,7 @@ class d_bvk extends d_bwh {
   j$() {
     (this.l$$bvk = Math.fround(this.l$$bvk / 1000.0));
   }
-  m$() {
+  m$$$bvk() {
     return $d2i(((215.0 - ((Math.pow(2.0, this.m$$bvk) * 35.0)))));
   }
   k$() {
@@ -5692,10 +5703,10 @@ class d_bvk extends d_bwh {
     if (((i2 > 0))) {
       return false;
     }
-    (this.p$$bvk = this.n$());
+    (this.p$$bvk = this.n$$$bvk());
     return true;
   }
-  n$() {
+  n$$$bvk() {
     return Math.imul((d_bvh.$ci?d_bvh:d_bvh.$clinit()).a$I(this.l$()), 2);
   }
   a$Z(z) {
@@ -5706,7 +5717,7 @@ class d_bvk extends d_bwh {
   }
   c$I(i2) {
     (this.k$$bvk = i2);
-    (this.p$$bvk = this.n$());
+    (this.p$$bvk = this.n$$$bvk());
   }
   l$() {
     return this.k$$bvk;
@@ -5739,7 +5750,7 @@ class d_bwl extends d_bvk {
     let fV = this.v$();
     let iD = this.r.d$();
     if ((((((fV >= 0.0) && (fV < Math.fround(iD))) && this.k$()) && (!this.a$$bvk)))) {
-      this.m$();
+      this.m$$$bwl();
     }
     let fY = this.y$();
     if (((fY > Math.fround((iD + 100 | 0))))) {
@@ -5753,7 +5764,7 @@ class d_bwl extends d_bvk {
       this.h$();
     }
   }
-  m$() {
+  m$$$bwl() {
     let bwpVar = this.w.u.a$Class(d_bwp);
     bwpVar.a$bve$I$I$Game(this.r, $d2i(this.v$()), $d2i(this.w$()), this.w);
     this.w.a$bwh(bwpVar);
@@ -5770,7 +5781,7 @@ class d_bvs extends d_bwl {
     this.a$bve$I$I$Game$Bitmap(bveVar, i, i2, game, (d_bxi.$ci?d_bxi:d_bxi.$clinit()).a$().G$());
     this.c$I($d2i((((this.l$()) * 1.3))));
   }
-  m$() {
+  m$$$bwl() {
     let bvrVar = this.w.u.a$Class(d_bvr);
     bvrVar.a$bve$I$I$Game(this.r, $d2i(this.v$()), $d2i(this.w$()), this.w);
     this.w.a$bwh(bvrVar);
@@ -6395,9 +6406,9 @@ class d_bwt extends d_bwh {
     if (((((this.m$$bwt > 0) || this.k$$bwt) || this.l$$bwt))) {
       return;
     }
-    this.a$Z(z);
+    this.a$Z$$bwt(z);
   }
-  a$Z(z) {
+  a$Z$$bwt(z) {
     this.w.t.a$F$F$AI$I(this.v$(), this.w$(), d_bwt.S$a, 20);
     (this.k$$bwt = true);
     (this.E = 0);
@@ -6533,11 +6544,11 @@ class d_bvu extends d_bwt {
       }
       (++this.f660d);
       this.i$();
-      this.h$();
+      this.h$$$bvu();
       this.c$();
     }
   }
-  h$() {
+  h$$$bvu() {
     if (((this.c$$bvu && ((d_bvh.$ci?d_bvh:d_bvh.$clinit()).a$I(80) === 0)))) {
       this.w.t.a$F$F$AI$I(this.v$(), this.w$(), Int32Array.of((-65536)), 1);
     }
@@ -6559,7 +6570,7 @@ class d_bvu extends d_bwt {
       this.e$();
     }
     this.i$();
-    this.h$();
+    this.h$$$bvu();
     this.c$();
   }
   e$() {
@@ -6594,14 +6605,14 @@ class d_bxa extends d_bwl {
   }
   a$() {
   }
-  m$() {
+  m$$$bwl() {
   }
   a$bve$I$I$Game(bveVar, i, i2, game) {
     this.a$bve$I$I$Game$Bitmap(bveVar, i, i2, game, (d_bxi.$ci?d_bxi:d_bxi.$clinit()).a$().H$());
     (this.v = Math.fround(game.e$() * 14.0));
     (this.i$$bxa = false);
   }
-  n$() {
+  n$$$bxa() {
     let f = 0;
     if ((this.i$$bxa)) {
       return;
@@ -6626,7 +6637,7 @@ class d_bxa extends d_bwl {
     this.c_$();
   }
   c_$() {
-    this.n$();
+    this.n$$$bxa();
     super.c_$();
   }
   d$() {
@@ -6741,7 +6752,7 @@ class d_bzi extends java_lang_Object {
           } else {
             if ((((d_bzi.S$k && (((Math.imul(((i3 - d_bzi.S$a | 0)), ((i3 - d_bzi.S$a | 0)))) + (Math.imul(((i4 - d_bzi.S$b | 0)), ((i4 - d_bzi.S$b | 0)))) | 0) > d_bzi.S$h)) && ($l(d_bzi.S$j + BigInt(1000000000)) > jNanoTime)))) {
               gameStateController.k$();
-              gameStateController.a$I$I((i3 - d_bzi.S$a | 0), (i4 - d_bzi.S$b | 0));
+              gameStateController.a$F$F(Math.fround(((i3 - d_bzi.S$a | 0))), Math.fround(((i4 - d_bzi.S$b | 0))));
               (d_bzi.S$k = false);
               (d_bzi.S$l = false);
               (d_bzi.S$j = 9223372036854775807n);
@@ -7386,7 +7397,7 @@ class d_bvz extends d_bvk {
     (this.E = (i - 1 | 0));
     if (((i < 30))) {
       if ((this.k$())) {
-        this.m$();
+        this.m$$$bvz();
       }
     } else {
       if ((($irem(this.E, 10) === 0))) {
@@ -7397,14 +7408,14 @@ class d_bvz extends d_bvk {
       }
     }
     if (((this.E === 0))) {
-      this.n$();
+      this.n$$$bvz();
     }
   }
-  n$() {
+  n$$$bvz() {
     (this.k$$bvz = false);
     (this.E = 0);
   }
-  m$() {
+  m$$$bvz() {
     throw new java_lang_RuntimeException().$init$String("not implemented! must be implemented by subclass!");
   }
   o$() {
@@ -7412,7 +7423,7 @@ class d_bvz extends d_bvk {
   }
   c$() {
     if ((this.k$$bvz)) {
-      this.n$();
+      this.n$$$bvz();
       this.j$();
     }
     super.c$();
@@ -10112,7 +10123,7 @@ class d_bwi extends d_bwl {
     this.a$bve$I$I$Game$Bitmap(bveVar, i, i2, game, (d_bxi.$ci?d_bxi:d_bxi.$clinit()).a$().Q$());
     this.c$I($d2i((((this.l$()) * 2.35))));
   }
-  m$() {
+  m$$$bwl() {
     if ((((d_bvh.$ci?d_bvh:d_bvh.$clinit()).a$I(4) === 0))) {
       let bwbVar = this.w.u.a$Class(d_bwb);
       bwbVar.a$bve$I$I$Game(this.r, $d2i(this.v$()), $d2i(this.w$()), this.w);
@@ -10502,7 +10513,7 @@ class d_bxe extends dk_logisoft_airattack_objects_weapons_RocketLauncher {
     bvlVar.a$cdn$bwh$bwh$F$F$F$F(game.u, bwtVar, this, Math.fround((bwtVar.D$() - 5 | 0)), Math.fround((($idiv(bwtVar.E$(), 2)) + 3 | 0)), Math.fround($idiv(this.D$(), 2)), Math.fround($idiv(this.E$(), 2)));
     this.a$bvl(bvlVar);
   }
-  a$() {
+  a$$$bxe() {
     let bwkVar = this.a$$RocketLauncher;
     let bwmVarB = this.w.b$bwh(this);
     let bvoVar = this.w.u.a$Class(d_bvo);
@@ -11589,6 +11600,12 @@ class d_bwm extends d_bwt {
   }
   d$() {
     super.d$();
+    if (((this.u < 0.0))) {
+      (this.u = 0.0);
+      if (((this.N < 0.0))) {
+        (this.N = 0.0);
+      }
+    }
     if (((this.p$$bwm && this.n$$bwt))) {
       this.J$$bwm.e$();
       (this.p$$bwm = false);
@@ -11810,7 +11827,7 @@ class d_bwm extends d_bwt {
   m$() {
     return this.R_f;
   }
-  a$Z(z) {
+  a$Z$$bwm(z) {
     (this.R_f = z);
   }
   c$Z(z) {
@@ -11937,7 +11954,7 @@ class d_bws extends d_bvz {
     this.c$I(16);
     (this.m$$bvz = 25);
   }
-  m$() {
+  m$$$bvz() {
     let bwrVar = this.w.u.a$Class(d_bwr);
     bwrVar.a$bve$F$F$I$I$Game(this.r, this.v$(), this.w$(), $d2i((Math.fround(this.l$$bvz.v$() + Math.fround((d_bvh.$ci?d_bvh:d_bvh.$clinit()).b$I(this.m$$bvz))))), $d2i((Math.fround(this.l$$bvz.w$() + Math.fround((d_bvh.$ci?d_bvh:d_bvh.$clinit()).b$I(this.m$$bvz))))), this.w);
     this.w.a$bwh(bwrVar);
@@ -11954,7 +11971,7 @@ class d_bwe extends d_bwl {
   a$bve$I$I$Game(bveVar, i, i2, game) {
     this.a$bve$I$I$Game$Bitmap(bveVar, i, i2, game, (d_bxi.$ci?d_bxi:d_bxi.$clinit()).a$().l$());
   }
-  m$() {
+  m$$$bwl() {
     let bwdVar = this.w.u.a$Class(d_bwd);
     bwdVar.a$bve$I$I$Game(this.r, $d2i(this.v$()), $d2i(this.w$()), this.w);
     this.w.a$bwh(bwdVar);
@@ -12269,7 +12286,7 @@ class d_bvp extends d_bvz {
     (this.v = Math.fround(game.e$() * Math.fround((((d_bvh.$ci?d_bvh:d_bvh.$clinit()).a$I(10) + 33 | 0)))));
     this.c$I(8);
   }
-  m$() {
+  m$$$bvz() {
     let bvoVar = this.w.u.a$Class(d_bvo);
     bvoVar.a$bve$F$F$F$F$Game$F(this.r, this.v$(), this.w$(), Math.fround((($d2i(this.l$$bvz.v$())) + (d_bvh.$ci?d_bvh:d_bvh.$clinit()).b$I(this.m$$bvz) | 0)), Math.fround((($d2i(this.l$$bvz.w$())) + (d_bvh.$ci?d_bvh:d_bvh.$clinit()).b$I(this.m$$bvz) | 0)), this.w, 4.5);
     this.w.a$bwh(bvoVar);
@@ -13672,9 +13689,9 @@ class d_bzq extends d_bzj {
           }
         } else {
           if (((bzsVar.a$$bzs === 0))) {
-            bwmVarA.a$Z(true);
+            bwmVarA.a$Z$$bwm(true);
           } else {
-            bwmVarA.a$Z(false);
+            bwmVarA.a$Z$$bwm(false);
           }
         }
       }
@@ -13717,9 +13734,9 @@ class d_bwk extends d_bvu {
   a$bve$I$I$Game$Z(bveVar, i, i2, game, z) {
     super.a$bve$I$I$Game$Z(bveVar, i, i2, game, z);
     (this.c$$bvu = false);
-    this.h$();
+    this.h$$$bwk();
   }
-  h$() {
+  h$$$bwk() {
     (this.f669d = this.w.u.a$Class(d_bxe));
     this.f669d.a$bwt$Game$bve(this, this.w, this.r);
   }
@@ -13734,7 +13751,7 @@ class d_bwk extends d_bvu {
       this.w.a$bwh(bvyVar);
       return;
     }
-    this.f669d.a$();
+    this.f669d.a$$$bxe();
   }
   a$() {
     if ((((d_bvh.$ci?d_bvh:d_bvh.$clinit()).a$I(150) === 0))) {
@@ -13981,7 +13998,7 @@ d_bvd.$jname = "d.bvd";
   function closeOverlay() { const o = $("overlay"); o.className = ""; o.innerHTML = ""; }
   const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 
-  const state = { running: false, view: null, activity: null, sleepMs: 0, helpOpen: false, pauseOpen: false, modal: 0, timer: 0 };
+  const state = { running: false, view: null, activity: null, sleepMs: 0, helpOpen: false, pauseOpen: false, modal: 0, timer: 0, paused: false, pausedFrames: 0 };
 
   // ------------------------------------------------------------------ d.WebHost (called from translated code)
   class d_WebHost extends java_lang_Object {
@@ -13995,12 +14012,13 @@ d_bvd.$jname = "d.bvd";
 
     static showPause$Object$Z(buw, show) {
       state.pauseOpen = show; state.modal += show ? 1 : -1;
-      if (!show) { closeOverlay(); return; }
+      state.paused = show; state.pausedFrames = 0;
+      if (!show) { closeOverlay(); kick(); return; }
       overlay(
         '<div class="panel"><h2>' + esc(S(2131492999)) + "</h2><p>" + esc(S(2131493000).replace(/^Resume using menu$/, "Press Esc or choose Continue")) + "</p>" +
         '<div class="row"><button id="b-resume">' + esc(S(2131492884)) + '</button><button id="b-main">' + esc(S(2131492886)) + "</button></div></div>");
       $("b-resume").onclick = () => buw.n$();
-      $("b-main").onclick = () => buw.f$();
+      $("b-main").onclick = () => { saveCurrentScore(); buw.f$(); };
     }
 
     static showHelp$Object(bym) {
@@ -14010,8 +14028,8 @@ d_bvd.$jname = "d.bvd";
       ];
       const pc = {
         move: "PC: hold the LEFT mouse button left or right of the soldier, or use the A / D (or arrow) keys.",
-        jump: "PC: drag (swipe) the mouse upward, or press W / Up arrow.",
-        fire: "PC: click anywhere to launch a rocket towards the mouse pointer (or press Space).",
+        jump: "PC: press SPACE (or W / Up arrow), or drag (swipe) the mouse quickly in the direction you want to jump. Hold A / D while pressing Space to jump sideways.",
+        fire: "PC: click anywhere to launch a rocket towards the mouse pointer (a quick click - holding the button longer makes the soldier walk). Z also fires.",
         dig: "PC: press and hold the mouse ON THE SOLDIER, then drag through the terrain.",
         hints: "",
       };
@@ -14040,13 +14058,18 @@ d_bvd.$jname = "d.bvd";
       $("hs-ok").onclick = () => { try { localStorage.setItem("aa:playerName", $("hs-name").value || "Player"); } catch (e) { } closeOverlay(); state.modal--; };
     }
 
-    static submitScore$I$I$I(score, waves, difficulty) {
+    static submitScoreQuiet(score, waves, difficulty) {
       const names = ["Easy", "Hard", "Bottomless", "Classic"];
       const a = hsLoad();
       const entry = { name: playerName(), score: score | 0, waves: waves | 0, diff: names[difficulty] || String(difficulty), t: Date.now() };
       a.push(entry);
       a.sort((x, y) => y.score - x.score);
       hsSave(a.slice(0, 50));
+      return { a, entry };
+    }
+
+    static submitScore$I$I$I(score, waves, difficulty) {
+      const { a, entry } = d_WebHost.submitScoreQuiet(score, waves, difficulty);
       // end-of-game screen (the original opened its highscore activity here); OK returns to the main menu
       const rank = a.indexOf(entry) + 1;
       state.modal++;
@@ -14087,10 +14110,19 @@ d_bvd.$jname = "d.bvd";
   // ------------------------------------------------------------------ input
   // android.view.MotionEvent actions: 0 down, 1 up, 2 move.  KeyEvent actions: 0 down, 1 up.
   const KEYMAP = {
-    ArrowLeft: 21, KeyA: 21, ArrowRight: 22, KeyD: 22, ArrowUp: 19, KeyW: 19, ArrowDown: 20, KeyS: 20,
-    Space: 96, KeyZ: 96, Enter: 23, NumpadEnter: 23, Escape: 4, Backspace: 4,
+    ArrowLeft: 21, KeyA: 21, ArrowRight: 22, KeyD: 22, ArrowDown: 20, KeyS: 20,
+    KeyZ: 96, KeyX: 96, ControlLeft: 96, Enter: 23, NumpadEnter: 23, Escape: 4, Backspace: 4,
   };
   let mouseDown = false;
+  const JUMPKEYS = { Space: 1, KeyW: 1, ArrowUp: 1 };
+  const dirHeld = { left: false, right: false };
+  // keyboard jump = the same call the swipe gesture makes (GameStateController.a(float,float)); direction keys give a diagonal jump
+  function doJump() {
+    const thread = state.view.getThread$();
+    if (!thread.n$()) return; // only while a game is running
+    const dx = (dirHeld.left ? -1 : 0) + (dirHeld.right ? 1 : 0);
+    thread.a.a$F$F(dx * 0.6, -1.0);
+  }
 
   function canvasPos(ev) {
     const cv = $("screen"), r = cv.getBoundingClientRect();
@@ -14115,6 +14147,8 @@ d_bvd.$jname = "d.bvd";
     const held = new Set();
     const ev = (a, c) => android_view_KeyEvent.$obtain(a, c, 0);
     window.addEventListener("keydown", (e) => {
+      if (e.code === "KeyF" && state.running && !e.repeat) { const el = $("fps"); if (el) el.style.display = el.style.display === "none" ? "block" : "none"; return; }
+      if (JUMPKEYS[e.code] && state.running) { e.preventDefault(); if (!e.repeat && state.modal === 0) doJump(); return; }
       const code = KEYMAP[e.code]; if (code === undefined || !state.running) return;
       e.preventDefault();
       if (e.repeat) return;
@@ -14124,12 +14158,14 @@ d_bvd.$jname = "d.bvd";
         return;
       }
       if (state.modal > 0) return;
+      if (code === 21) dirHeld.left = true; else if (code === 22) dirHeld.right = true;
       held.add(e.code);
       state.view.onKeyDown$I$KeyEvent(code, ev(0, code));
     });
     window.addEventListener("keyup", (e) => {
       const code = KEYMAP[e.code]; if (code === undefined || !state.running) return;
       e.preventDefault();
+      if (code === 21) dirHeld.left = false; else if (code === 22) dirHeld.right = false;
       if (!held.has(e.code)) return;
       held.delete(e.code);
       state.view.onKeyUp$I$KeyEvent(code, ev(1, code));
@@ -14154,7 +14190,26 @@ d_bvd.$jname = "d.bvd";
       if (state.errors > 20) { state.running = false; $("fatal").textContent = "Fatal error - see console: " + (e && e.message || e); $("fatal").style.display = "block"; return; }
     }
     state.frames = (state.frames || 0) + 1;
+    fpsCount++;
+    // paused: the original game thread wait()s. Draw the paused frame a few times, then stop stepping completely.
+    if (state.paused && ++state.pausedFrames > 3) { state.timer = 0; return; }
     state.timer = setTimeout(frame, Math.max(0, state.sleepMs - 1));
+  }
+  let fpsCount = 0, fpsLast = performance.now();
+  setInterval(() => {
+    const el = $("fps"), now = performance.now();
+    if (el && el.style.display !== "none") el.textContent = Math.round(fpsCount * 1000 / (now - fpsLast)) + " fps (game target 25)";
+    fpsCount = 0; fpsLast = now;
+  }, 1000);
+  function kick() { if (state.running && !state.timer) frame(); }
+
+  // "Exit to main" from the pause screen: keep the score reached so far in the local highscore list
+  function saveCurrentScore() {
+    try {
+      const g = state.view.getThread$().a.a;
+      const score = g.j$(), waves = g.k$().a$() - 1;
+      if (score > 0) d_WebHost.submitScoreQuiet(score, waves, g.q$().ordinal$());
+    } catch (e) { console.warn("score save failed", e); }
   }
 
   // ------------------------------------------------------------------ boot
