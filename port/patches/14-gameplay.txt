@@ -1,0 +1,28 @@
+@@ FILE d/bzi.java
+<<<<
+gameStateController.a(i3 - a, i4 - b);
+====
+gameStateController.a((float) (i3 - a), (float) (i4 - b));
+>>>>
+@@ FILE d/bvk.java
+<<<<
+        bzg.a(canvas, (int) v(), ((int) z()) + 5, (m() - this.h) / m(), -7829368, -1);
+====
+        bzg.a(canvas, (int) v(), ((int) z()) + 5, ((float) (m() - this.h)) / m(), -7829368, -1);
+>>>>
+@@ FILE d/bwm.java
+<<<<
+    public void d() {
+        super.d();
+        if (this.p && this.n) {
+====
+    public void d() {
+        super.d();
+        if (this.u < 0.0f) {
+            this.u = 0.0f;
+            if (this.N < 0.0f) {
+                this.N = 0.0f;
+            }
+        }
+        if (this.p && this.n) {
+>>>>
