@@ -67,7 +67,7 @@
   function closeOverlay() { const o = $("overlay"); o.className = ""; o.innerHTML = ""; }
   const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 
-  const state = { running: false, view: null, activity: null, sleepMs: 0, helpOpen: false, pauseOpen: false, modal: 0, timer: 0 };
+  const state = { running: false, view: null, activity: null, sleepMs: 0, helpOpen: false, pauseOpen: false, modal: 0, timer: 0, paused: false, pausedFrames: 0 };
 
   // ------------------------------------------------------------------ d.WebHost (called from translated code)
   class d_WebHost extends java_lang_Object {
@@ -81,12 +81,13 @@
 
     static showPause$Object$Z(buw, show) {
       state.pauseOpen = show; state.modal += show ? 1 : -1;
-      if (!show) { closeOverlay(); return; }
+      state.paused = show; state.pausedFrames = 0;
+      if (!show) { closeOverlay(); kick(); return; }
       overlay(
         '<div class="panel"><h2>' + esc(S(2131492999)) + "</h2><p>" + esc(S(2131493000).replace(/^Resume using menu$/, "Press Esc or choose Continue")) + "</p>" +
         '<div class="row"><button id="b-resume">' + esc(S(2131492884)) + '</button><button id="b-main">' + esc(S(2131492886)) + "</button></div></div>");
       $("b-resume").onclick = () => buw.n$();
-      $("b-main").onclick = () => buw.f$();
+      $("b-main").onclick = () => { saveCurrentScore(); buw.f$(); };
     }
 
     static showHelp$Object(bym) {
@@ -96,8 +97,8 @@
       ];
       const pc = {
         move: "PC: hold the LEFT mouse button left or right of the soldier, or use the A / D (or arrow) keys.",
-        jump: "PC: drag (swipe) the mouse upward, or press W / Up arrow.",
-        fire: "PC: click anywhere to launch a rocket towards the mouse pointer (or press Space).",
+        jump: "PC: press SPACE (or W / Up arrow), or drag (swipe) the mouse quickly in the direction you want to jump. Hold A / D while pressing Space to jump sideways.",
+        fire: "PC: click anywhere to launch a rocket towards the mouse pointer (a quick click - holding the button longer makes the soldier walk). Z also fires.",
         dig: "PC: press and hold the mouse ON THE SOLDIER, then drag through the terrain.",
         hints: "",
       };
@@ -126,13 +127,18 @@
       $("hs-ok").onclick = () => { try { localStorage.setItem("aa:playerName", $("hs-name").value || "Player"); } catch (e) { } closeOverlay(); state.modal--; };
     }
 
-    static submitScore$I$I$I(score, waves, difficulty) {
+    static submitScoreQuiet(score, waves, difficulty) {
       const names = ["Easy", "Hard", "Bottomless", "Classic"];
       const a = hsLoad();
       const entry = { name: playerName(), score: score | 0, waves: waves | 0, diff: names[difficulty] || String(difficulty), t: Date.now() };
       a.push(entry);
       a.sort((x, y) => y.score - x.score);
       hsSave(a.slice(0, 50));
+      return { a, entry };
+    }
+
+    static submitScore$I$I$I(score, waves, difficulty) {
+      const { a, entry } = d_WebHost.submitScoreQuiet(score, waves, difficulty);
       // end-of-game screen (the original opened its highscore activity here); OK returns to the main menu
       const rank = a.indexOf(entry) + 1;
       state.modal++;
@@ -173,10 +179,19 @@
   // ------------------------------------------------------------------ input
   // android.view.MotionEvent actions: 0 down, 1 up, 2 move.  KeyEvent actions: 0 down, 1 up.
   const KEYMAP = {
-    ArrowLeft: 21, KeyA: 21, ArrowRight: 22, KeyD: 22, ArrowUp: 19, KeyW: 19, ArrowDown: 20, KeyS: 20,
-    Space: 96, KeyZ: 96, Enter: 23, NumpadEnter: 23, Escape: 4, Backspace: 4,
+    ArrowLeft: 21, KeyA: 21, ArrowRight: 22, KeyD: 22, ArrowDown: 20, KeyS: 20,
+    KeyZ: 96, KeyX: 96, ControlLeft: 96, Enter: 23, NumpadEnter: 23, Escape: 4, Backspace: 4,
   };
   let mouseDown = false;
+  const JUMPKEYS = { Space: 1, KeyW: 1, ArrowUp: 1 };
+  const dirHeld = { left: false, right: false };
+  // keyboard jump = the same call the swipe gesture makes (GameStateController.a(float,float)); direction keys give a diagonal jump
+  function doJump() {
+    const thread = state.view.getThread$();
+    if (!thread.n$()) return; // only while a game is running
+    const dx = (dirHeld.left ? -1 : 0) + (dirHeld.right ? 1 : 0);
+    thread.a.a$F$F(dx * 0.6, -1.0);
+  }
 
   function canvasPos(ev) {
     const cv = $("screen"), r = cv.getBoundingClientRect();
@@ -201,6 +216,8 @@
     const held = new Set();
     const ev = (a, c) => android_view_KeyEvent.$obtain(a, c, 0);
     window.addEventListener("keydown", (e) => {
+      if (e.code === "KeyF" && state.running && !e.repeat) { const el = $("fps"); if (el) el.style.display = el.style.display === "none" ? "block" : "none"; return; }
+      if (JUMPKEYS[e.code] && state.running) { e.preventDefault(); if (!e.repeat && state.modal === 0) doJump(); return; }
       const code = KEYMAP[e.code]; if (code === undefined || !state.running) return;
       e.preventDefault();
       if (e.repeat) return;
@@ -210,12 +227,14 @@
         return;
       }
       if (state.modal > 0) return;
+      if (code === 21) dirHeld.left = true; else if (code === 22) dirHeld.right = true;
       held.add(e.code);
       state.view.onKeyDown$I$KeyEvent(code, ev(0, code));
     });
     window.addEventListener("keyup", (e) => {
       const code = KEYMAP[e.code]; if (code === undefined || !state.running) return;
       e.preventDefault();
+      if (code === 21) dirHeld.left = false; else if (code === 22) dirHeld.right = false;
       if (!held.has(e.code)) return;
       held.delete(e.code);
       state.view.onKeyUp$I$KeyEvent(code, ev(1, code));
@@ -240,7 +259,26 @@
       if (state.errors > 20) { state.running = false; $("fatal").textContent = "Fatal error - see console: " + (e && e.message || e); $("fatal").style.display = "block"; return; }
     }
     state.frames = (state.frames || 0) + 1;
+    fpsCount++;
+    // paused: the original game thread wait()s. Draw the paused frame a few times, then stop stepping completely.
+    if (state.paused && ++state.pausedFrames > 3) { state.timer = 0; return; }
     state.timer = setTimeout(frame, Math.max(0, state.sleepMs - 1));
+  }
+  let fpsCount = 0, fpsLast = performance.now();
+  setInterval(() => {
+    const el = $("fps"), now = performance.now();
+    if (el && el.style.display !== "none") el.textContent = Math.round(fpsCount * 1000 / (now - fpsLast)) + " fps (game target 25)";
+    fpsCount = 0; fpsLast = now;
+  }, 1000);
+  function kick() { if (state.running && !state.timer) frame(); }
+
+  // "Exit to main" from the pause screen: keep the score reached so far in the local highscore list
+  function saveCurrentScore() {
+    try {
+      const g = state.view.getThread$().a.a;
+      const score = g.j$(), waves = g.k$().a$() - 1;
+      if (score > 0) d_WebHost.submitScoreQuiet(score, waves, g.q$().ordinal$());
+    } catch (e) { console.warn("score save failed", e); }
   }
 
   // ------------------------------------------------------------------ boot
