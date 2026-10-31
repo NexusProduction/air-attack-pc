@@ -29,6 +29,7 @@
   .panel button:disabled { opacity: .35; cursor: default; }
   .panel label { display: block; margin: 10px 0; } .panel input, .panel select { font: inherit; font-size: 16px; }
   #fatal { position: absolute; left: 0; right: 0; bottom: 0; padding: 10px; background: #800; display: none; font-size: 14px; }
+  #fps { position: absolute; left: 8px; top: 6px; font-size: 13px; color: #9fd3ff; background: rgba(0,0,0,.5); padding: 2px 6px; pointer-events: none; }
   #hint { position: absolute; left: 0; right: 0; bottom: 8px; text-align: center; font-size: 13px; opacity: .65; }
 </style>
 </head>
@@ -40,10 +41,11 @@
     <div id="loading"><div id="bar"></div></div>
     <div id="status"></div>
     <button id="start">START</button>
-    <div id="hint">Mouse: tap = fire &middot; hold left/right of soldier = walk &middot; swipe up = jump &middot; hold on soldier = dig &nbsp;|&nbsp; Keys: A/D or arrows = walk, W = jump, Space = fire, Esc = pause</div>
+    <div id="hint">Mouse: tap = fire &middot; hold left/right of soldier = walk &middot; swipe up = jump &middot; hold on soldier = dig &nbsp;|&nbsp; Keys: A/D or arrows = walk, Space / W = jump, Z = fire, F = fps, Esc = pause</div>
   </div>
   <div id="overlay"></div>
   <div id="fatal"></div>
+  <div id="fps" style="display:none"></div>
 </div>
 <script>
   // fixed 1280x720 game surface, uniformly scaled to fit the window
