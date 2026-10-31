@@ -3,7 +3,7 @@
 const http = require("http"), fs = require("fs"), path = require("path");
 const { chromium } = require("playwright");
 const root = path.join(__dirname, "../../dist");
-const steps = (process.argv[2] || "").split(";").map((s) => s.trim()).filter(Boolean), out = process.argv[3] || "/tmp/aa-play";
+const steps = (process.argv[2] || "").split(process.env.SEP || ";").map((s) => s.trim()).filter(Boolean), out = process.argv[3] || "/tmp/aa-play";
 fs.mkdirSync(out, { recursive: true });
 const types = { ".html": "text/html", ".js": "text/javascript", ".png": "image/png", ".ogg": "audio/ogg", ".otf": "font/otf" };
 const srv = http.createServer((q, r) => {
