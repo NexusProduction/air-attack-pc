@@ -98,11 +98,45 @@ class JsGen {
         return result;
     }
 
+    private final Map<MethodSymbol, String> mnameCache = new HashMap<>();
+    int mnameRenamed = 0;
+
+    String plainName(MethodSymbol r) {
+        return r.name.toString() + "$" + joinSigs(types.erasure(r.type).getParameterTypes());
+    }
+
+    /**
+     * Java lets unrelated methods share a name+signature inside one class hierarchy (private methods, package-private methods
+     * of different packages - ProGuard reuses names like a() heavily). JS has one namespace per prototype chain, so such a
+     * method would silently override / be overridden. A method family whose name is also used by a NON-overriding method of a
+     * related class gets the suffix "$$<Owner>".
+     */
+    boolean hasNameClash(MethodSymbol r, String n) {
+        ClassSymbol owner = (ClassSymbol) r.owner;
+        for (ClassSymbol c : reach) {
+            if (c != owner && !(c.isSubClass(owner, types) || owner.isSubClass(c, types))) continue;
+            for (Symbol s : c.members().getSymbolsByName(r.name)) {
+                if (!(s instanceof MethodSymbol) || s.isStatic() || s == r || ((MethodSymbol) s).isConstructor()) continue;
+                MethodSymbol sr = rootOf((MethodSymbol) s);
+                if (sr == r) continue;
+                if (plainName(sr).equals(n)) return true;
+            }
+        }
+        return false;
+    }
+
     String mname(MethodSymbol m) {
         if (m.isConstructor()) return "$init$" + joinSigs(m.type.getParameterTypes());
         MethodSymbol r = rootOf(m);
-        String base = r.name.toString();
-        return base + "$" + joinSigs(types.erasure(r.type).getParameterTypes());
+        String cached = mnameCache.get(r);
+        if (cached != null) return cached;
+        String n = plainName(r);
+        if (!r.isStatic() && r.owner instanceof ClassSymbol && model.isTranslated((ClassSymbol) r.owner) && hasNameClash(r, n)) {
+            n = n + "$$" + simpleFlat((ClassSymbol) r.owner);
+            mnameRenamed++;
+        }
+        mnameCache.put(r, n);
+        return n;
     }
 
     /** "I$J" style join (no leading separator) */
@@ -333,6 +367,7 @@ class JsGen {
 
     // ---------------------------------------------------------------- driver
     String generate() {
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> System.err.println("renamed clashing methods: " + mnameRenamed)));
         List<ClassSymbol> classes = new ArrayList<>();
         for (ClassSymbol c : model.decls.keySet()) if (reach.contains(c) && model.isTranslated(c)) classes.add(c);
         // topological order on superclass
@@ -990,6 +1025,34 @@ class JsGen {
         for (String[] e : m) INLINE.put(e[0], e[1]);
     }
 
+    /**
+     * JADX drops implicit int->float widening casts, so a decompiled call like a(i3 - x, i4 - y) may now bind to an
+     * a(int,int) overload although the bytecode called a(float,float). Report every such candidate for manual review.
+     */
+    void reviewOverload(JCMethodInvocation t, MethodSymbol ms, ClassSymbol owner) {
+        List<Type> ps = types.erasure(ms.type).getParameterTypes();
+        if (ps.isEmpty()) return;
+        boolean hasInt = false;
+        for (Type p : ps) if (p.getTag() == TypeTag.INT || p.getTag() == TypeTag.LONG) hasInt = true;
+        if (!hasInt) return;
+        Set<ClassSymbol> seen = new HashSet<>();
+        for (Type st : types.closure(owner.type)) {
+            if (!(st.tsym instanceof ClassSymbol) || !seen.add((ClassSymbol) st.tsym)) continue;
+            for (Symbol o : st.tsym.members().getSymbolsByName(ms.name)) {
+                if (!(o instanceof MethodSymbol) || o == ms) continue;
+                List<Type> qs = types.erasure(o.type).getParameterTypes();
+                if (qs.size() != ps.size()) continue;
+                boolean floaty = false, ok = true;
+                for (int i = 0; i < ps.size(); i++) {
+                    TypeTag a = ps.get(i).getTag(), b = qs.get(i).getTag();
+                    if (a == b) continue;
+                    if ((a == TypeTag.INT || a == TypeTag.LONG) && (b == TypeTag.FLOAT || b == TypeTag.DOUBLE)) floaty = true; else ok = false;
+                }
+                if (ok && floaty) System.err.println("OVERLOAD-REVIEW " + fn.cls.flatname + ": " + t.toString().replace('\n', ' ') + "  bound to " + ms.owner.name + "." + ms.name + ps + "  sibling " + o.owner.name + "." + o.name + qs);
+            }
+        }
+    }
+
     String call(JCMethodInvocation t) {
         Symbol rs = TreeInfo.symbol(t.meth);
         if (!(rs instanceof MethodSymbol)) throw new RuntimeException("unresolved call in " + fn.cls.flatname + ": " + t + " -> " + rs);
@@ -1001,6 +1064,7 @@ class JsGen {
         String args = callArgs(t.args, ms, t.varargsElement, false);
         String argl = argList(args);
         boolean extOwner = !model.isTranslated(owner);
+        if (!extOwner) reviewOverload(t, ms, owner);
 
         // static -----------------------------------------------------------
         if (ms.isStatic()) {
