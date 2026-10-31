@@ -1,7 +1,7 @@
 # Air Attack - PC / web port
 
 Browser port of the Android game **Air Attack** (dk.logisoft.airattack v4.52). It is a *same-code* port: the original
-game logic (≈180 obfuscated classes: physics, terrain destruction, AI, waves, menus) is machine-translated from the
+game logic (â‰ˆ180 obfuscated classes: physics, terrain destruction, AI, waves, menus) is machine-translated from the
 decompiled Java to JavaScript, running on a small hand-written Java/Android runtime (Canvas 2D, Web Audio, localStorage).
 It is not a re-implementation.
 
@@ -12,18 +12,18 @@ python3 -m http.server -d dist 8000      # any static web server works
 # open http://localhost:8000
 ```
 
-Click **START** → Play → Easy / Hard / Bottomless / Classic.  (Works on GitHub Pages as-is: upload the contents of `dist/`.)
+Click **START** â†’ Play â†’ Easy / Hard / Bottomless / Classic.  (Works on GitHub Pages as-is: upload the contents of `dist/`.)
 
 ## Controls (PC)
 
 | Action | Mouse | Keyboard |
 |---|---|---|
 | Fire a rocket | click anywhere (towards the pointer) | `Space` / `Z` |
-| Walk | hold left button left/right of the soldier | `A` `D` / ← → |
-| Jump (double jump in the air) | swipe/drag upward | `W` / ↑ |
+| Walk | hold left button left/right of the soldier | `A` `D` / â† â†’ |
+| Jump (double jump in the air) | swipe/drag upward | `W` / â†‘ |
 | Dig | press and hold ON the soldier, drag through terrain | - |
 | Pause / back | - | `Esc` |
-| Menu | click buttons | ← → + `Enter` |
+| Menu | click buttons | â† â†’ + `Enter` |
 
 Touch screens work too (first finger = mouse).  Tab hidden = automatic pause (like Android `onPause`).
 
@@ -64,8 +64,8 @@ replacement text
 
 ## Pipeline
 
-`port/src (+overlay +patches)` → `tools/apply_patches.py` → `build/jsrc` → javac-attributed translator (`tools/Transpiler.java`,
-`JsGen.java`; Java 8 level, no lambdas) → `build/game.js` → concatenated with `res.js` + runtime + `host.js` → `dist/game-bundle.js`.
+`port/src (+overlay +patches)` â†’ `tools/apply_patches.py` â†’ `build/jsrc` â†’ javac-attributed translator (`tools/Transpiler.java`,
+`JsGen.java`; Java 8 level, no lambdas) â†’ `build/game.js` â†’ concatenated with `res.js` + runtime + `host.js` â†’ `dist/game-bundle.js`.
 
 The generated code follows a naming contract (documented at the top of `JsGen.java`): methods are `name$sig1$sig2`, constructors
 `$init$sigs`, static fields `S$name`, etc.  The game is stepped from the page (`GameUiController.step()`), the original 40 ms frame
