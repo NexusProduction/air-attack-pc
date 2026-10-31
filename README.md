@@ -1,7 +1,7 @@
 # Air Attack - PC / web port
 
 Browser port of the Android game **Air Attack** (dk.logisoft.airattack v4.52). It is a *same-code* port: the original
-game logic (â‰ˆ180 obfuscated classes: physics, terrain destruction, AI, waves, menus) is machine-translated from the
+game logic (about 180 obfuscated classes: physics, terrain destruction, AI, waves, menus) is machine-translated from the
 decompiled Java to JavaScript, running on a small hand-written Java/Android runtime (Canvas 2D, Web Audio, localStorage).
 It is not a re-implementation.
 
@@ -12,18 +12,18 @@ python3 -m http.server -d dist 8000      # any static web server works
 # open http://localhost:8000
 ```
 
-Click **START** â†’ Play â†’ Easy / Hard / Bottomless / Classic.  (Works on GitHub Pages as-is: upload the contents of `dist/`.)
+Click **START** -> Play -> Easy / Hard / Bottomless / Classic.  (On GitHub Pages the game is served from `dist/`; the root `index.html` redirects there.)
 
 ## Controls (PC)
 
 | Action | Mouse | Keyboard |
 |---|---|---|
-| Fire a rocket | click anywhere (towards the pointer) | `Space` / `Z` |
-| Walk | hold left button left/right of the soldier | `A` `D` / â† â†’ |
-| Jump (double jump in the air) | swipe/drag upward | `W` / â†‘ |
+| Fire a rocket | click anywhere (towards the pointer) | `Z` |
+| Walk | hold left button left/right of the soldier | `A` `D` / Left, Right arrows |
+| Jump (double jump in the air) | swipe/drag quickly in the jump direction | `Space` / `W` / Up arrow (hold `A`/`D` to jump sideways) |
 | Dig | press and hold ON the soldier, drag through terrain | - |
 | Pause / back | - | `Esc` |
-| Menu | click buttons | â† â†’ + `Enter` |
+| Menu | click buttons | Left, Right arrows + `Enter` |
 
 Touch screens work too (first finger = mouse).  Tab hidden = automatic pause (like Android `onPause`).
 
@@ -64,8 +64,8 @@ replacement text
 
 ## Pipeline
 
-`port/src (+overlay +patches)` â†’ `tools/apply_patches.py` â†’ `build/jsrc` â†’ javac-attributed translator (`tools/Transpiler.java`,
-`JsGen.java`; Java 8 level, no lambdas) â†’ `build/game.js` â†’ concatenated with `res.js` + runtime + `host.js` â†’ `dist/game-bundle.js`.
+`port/src (+overlay +patches)` -> `tools/apply_patches.py` -> `build/jsrc` -> javac-attributed translator (`tools/Transpiler.java`,
+`JsGen.java`; Java 8 level, no lambdas) -> `build/game.js` -> concatenated with `res.js` + runtime + `host.js` -> `dist/game-bundle.js`.
 
 The generated code follows a naming contract (documented at the top of `JsGen.java`): methods are `name$sig1$sig2`, constructors
 `$init$sigs`, static fields `S$name`, etc.  The game is stepped from the page (`GameUiController.step()`), the original 40 ms frame
@@ -75,3 +75,9 @@ pacing is honoured through `WebHost.requestSleep()`.
 
 Air Attack, its code, art and sounds belong to Logisoft / the original authors.  This port is a technical conversion for
 personal/educational use.  Do not publish the converted game or its assets publicly without permission from the rights holder.
+
+## Publishing on GitHub Pages
+
+Option A (simple): Settings -> Pages -> Deploy from a branch -> `main` / `(root)`. The game opens at `/dist/` (the root `index.html` redirects).
+Option B: Settings -> Pages -> Source: **GitHub Actions**.  `.github/workflows/pages.yml` then publishes `dist/` on every push to `main`.
+`.gitignore` keeps the APK, the raw decompiled sources (`port/src`) and build output out of the repo.
