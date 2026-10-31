@@ -1,0 +1,11 @@
+@@ FILE d/cch.java
+<<<<
+                } catch (NoSuchAlgorithmException e) {
+                    bot.a(e);
+                    bArrDigest = null;
+                }
+====
+                } catch (NoSuchAlgorithmException e) {
+                    throw new IllegalStateException("MD5 not available");
+                }
+>>>>
