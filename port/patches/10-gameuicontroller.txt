@@ -1,0 +1,281 @@
+@@ FILE dk/logisoft/airattack/ui/GameUiController.java
+<<<<
+import d.bsl;
+import d.btu;
+import d.btv;
+import d.buk;
+====
+import d.buk;
+>>>>
+<<<<
+import dk.logisoft.ads.GlobalAdHolder;
+import dk.logisoft.airattack.AirAttackActivity;
+====
+import d.WebHost;
+import dk.logisoft.airattack.AirAttackActivity;
+>>>>
+<<<<
+public class GameUiController extends Thread {
+====
+public class GameUiController {
+>>>>
+<<<<
+    private btv t;
+    private bym v;
+====
+    private bym v;
+>>>>
+<<<<
+        this.x = true;
+        this.E = false;
+        q();
+        setName("AirAttack-GameThread-GameUiController");
+    }
+====
+        this.x = true;
+        this.E = false;
+        q();
+    }
+>>>>
+<<<<
+    public synchronized void b() {
+        try {
+            if (cdy.e) {
+                Log.d(getClass().getName(), "markSurfaceHolderDestroyed");
+            }
+            this.p = false;
+            while (!this.q) {
+                f();
+                if (cdy.e) {
+                    Log.d(getClass().getName(), "markSurfaceHolderDestroyed: Waiting");
+                }
+                try {
+                    notifyAll();
+                    wait();
+                } catch (InterruptedException unused) {
+                }
+            }
+            if (cdy.e) {
+                Log.d(getClass().getName(), "markSurfaceHolderDestroyed: Finished (surfaceHolderDestroyed: " + this.p + ", paused: " + this.o + ", isWaiting:" + this.q + ")");
+            }
+            if (cdy.e) {
+                Log.d(getClass().getName(), "markSurfaceHolderDestroyed: reached finally");
+            }
+        } catch (Throwable th) {
+            if (cdy.e) {
+                Log.d(getClass().getName(), "markSurfaceHolderDestroyed: reached finally");
+            }
+            throw th;
+        }
+    }
+====
+    public synchronized void b() {
+        this.p = false;
+        f();
+    }
+>>>>
+<<<<
+    @Override // java.lang.Thread, java.lang.Runnable
+    public void run() {
+        cdf.b();
+        this.s.a();
+        if (cdy.e) {
+            Log.d(getClass().getName(), "AirAttackThread.run");
+        }
+        long jA = 0;
+        D();
+        while (this.n) {
+            synchronized (this) {
+                a();
+                while (true) {
+                    if ((this.f812d != null && this.p && this.r && (!this.o || this.l)) || !this.n || this.G) {
+                        break;
+                    }
+                    if (cdy.e) {
+                        Log.d(getClass().getName(), "run: Waiting (surfaceHolderDestroyed: " + this.p + ", paused: " + this.o + ", hasFocus:" + this.r + ", doDisplayPauseMessage: " + this.l + ")");
+                    }
+                    if (cdy.y) {
+                        jA = cdw.a();
+                    }
+                    try {
+                        this.q = true;
+                        notifyAll();
+                        wait();
+                        this.q = false;
+                    } catch (InterruptedException unused) {
+                    }
+                    if (cdy.y) {
+                        jA = cdw.a(jA, "paused", 1000.0d);
+                    }
+                    if (this.a.b()) {
+                        this.B.a();
+                        this.C.a();
+                        this.A.a();
+                    }
+                    if (this.p) {
+                        a(this.a.p());
+                    }
+                    F();
+                }
+                F();
+            }
+            if (!E()) {
+                this.t = btu.a().a(1.0f);
+                if (cdy.y) {
+                    jA = cdw.a();
+                }
+                k();
+                if (cdy.y) {
+                    jA = cdw.a(jA, "frame", 1000.0d);
+                }
+                d();
+            }
+        }
+        if (cdy.y) {
+            cdw.b();
+        }
+        System.exit(0);
+    }
+====
+    /** Web port: start of the original game thread's run() (before the loop). */
+    public void start() {
+        this.s.a();
+        D();
+    }
+
+    /**
+     * Web port: ONE iteration of the original thread loop (run()); the page calls this repeatedly, pacing is requested by
+     * GameStateController.f() through WebHost.requestSleep().
+     */
+    public void step() {
+        a();
+        if (!((this.f812d != null && this.p && this.r && (!this.o || this.l)) || !this.n || this.G)) {
+            // original: thread waits here; the wait loop body redraws the (paused) game once per wake-up
+            if (this.a.b()) {
+                this.B.a();
+                this.C.a();
+                this.A.a();
+            }
+            if (this.p) {
+                a(this.a.p());
+            }
+            F();
+            return;
+        }
+        F();
+        if (!E()) {
+            k();
+            d();
+        }
+    }
+>>>>
+<<<<
+    private boolean E() {
+        if (!this.G) {
+            return false;
+        }
+        try {
+            Thread.sleep(500L);
+        } catch (InterruptedException unused) {
+        }
+        this.a.h();
+====
+    private boolean E() {
+        if (!this.G) {
+            return false;
+        }
+        this.a.h();
+>>>>
+<<<<
+        if (cep.b(this.m)) {
+            this.e.add(new byf(this, 25, "Settings"));
+        }
+        this.e.add(new byh(this, 3, "Submit Highest Score and Exit"));
+====
+        if (cep.b(this.m)) {
+            this.e.add(new byf(this, 25, "Settings"));
+        }
+>>>>
+<<<<
+    public void a(int i, int i2, int i3, Game.Difficulty difficulty) {
+        J();
+        this.m.a(i3);
+    }
+====
+    public void a(int i, int i2, int i3, Game.Difficulty difficulty) {
+        J();
+        WebHost.submitScore(i, i3, difficulty.ordinal());
+    }
+>>>>
+<<<<
+    public int t() {
+        if (s()) {
+            return (int) this.t.c();
+        }
+        return 0;
+    }
+====
+    public int t() {
+        return 0;
+    }
+>>>>
+<<<<
+    private int L() {
+        int iA = ((cee) cbq.b().a(GameActivity.f)).a();
+        int iA2 = bsl.a();
+        boolean z = bsl.b() <= ((cee) cbq.b().a(AirAttackApplication.a)).a() || ccc.a().a("iareqMav", 0) > cbp.a().f707d;
+        if (iA < iA2 || !z || buv.b) {
+            return 0;
+        }
+        int iA3 = ccc.a().a("wavesCount", 8);
+        if (cdy.f) {
+            Log.i("AirAttack", "latestWaveToRemoveAds = " + iA3);
+        }
+        int iMin = Math.min(iA3, ((iA - iA2) / 4) + 1);
+        if (cdy.f) {
+            Log.i("AirAttack", "adWaves = " + iMin + " (numberOfGamesPlayed=" + iA + ")");
+        }
+        return iMin;
+    }
+====
+    private int L() {
+        return 0;
+    }
+>>>>
+<<<<
+    public void b(int i) {
+        if (i >= bsl.b()) {
+            cbq.b().a(AirAttackApplication.a, new cee(i));
+        }
+    }
+====
+    public void b(int i) {
+        cbq.b().a(AirAttackApplication.a, new cee(i));
+    }
+>>>>
+<<<<
+    private void M() {
+        if (GlobalAdHolder.b()) {
+            this.m.runOnUiThread(new Runnable(this) { // from class: d.bxu
+                private final GameUiController a;
+
+                {
+                    this.a = this;
+                }
+
+                @Override // java.lang.Runnable
+                public void run() {
+                    this.a.C();
+                }
+            });
+        } else {
+            this.a.h();
+            b(ThreadEvent.ReturnFromInterstitial);
+        }
+    }
+====
+    private void M() {
+        this.a.h();
+        b(ThreadEvent.ReturnFromInterstitial);
+    }
+>>>>

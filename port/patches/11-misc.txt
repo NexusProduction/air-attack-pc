@@ -1,0 +1,61 @@
+@@ FILE d/bxv.java
+<<<<
+        if (ccj.b().d(R.string.prefKeyShowHelpPagesDialogueHasBeenShown) || this.h.G()) {
+            this.h.H();
+        } else {
+            ccj.b().b(R.string.prefKeyShowHelpPagesDialogueHasBeenShown, true);
+            bza.a();
+        }
+====
+        this.h.H();
+>>>>
+@@ FILE d/byb.java
+<<<<
+        if (!this.h.G()) {
+            this.h.v.a();
+            this.h.s.d();
+        } else {
+            this.h.m.runOnUiThread(new byc(this));
+        }
+====
+        this.h.v.a();
+        this.h.s.d();
+>>>>
+@@ FILE d/ccj.java
+<<<<
+        return new cck(context.getApplicationContext(), context.getPackageName() + "_preferences", PreferenceManager.getDefaultSharedPreferences(context), z);
+====
+        return new cck(context.getApplicationContext(), context.getPackageName() + "_preferences", context.getSharedPreferences(context.getPackageName() + "_preferences", 0), z);
+>>>>
+@@ FILE d/cck.java
+<<<<
+            voidBackupManager = new BackupManagerHandler(context, cde.a && cbp.a().a);
+====
+            voidBackupManager = new VoidBackupManager();
+>>>>
+@@ FILE dk/logisoft/airattack/game/GameStateController.java
+<<<<
+import d.bxj;
+====
+import d.WebHost;
+import d.bxj;
+>>>>
+<<<<
+    private final GameUiController b;
+====
+    public final GameUiController b;
+>>>>
+<<<<
+            long jA = cdy.y ? cdw.a() : 0L;
+            try {
+                Thread.sleep(j);
+            } catch (InterruptedException unused) {
+            }
+            if (cdy.y) {
+                cdw.a(jA, "inner - dosleep", 13.0d);
+            }
+            this.a.t.a(false);
+====
+            WebHost.requestSleep(j);
+            this.a.t.a(false);
+>>>>
