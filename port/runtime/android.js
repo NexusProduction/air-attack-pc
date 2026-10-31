@@ -238,7 +238,18 @@
   mkEnum("android.graphics.Paint$Align", ["LEFT", "CENTER", "RIGHT"]);
   mkEnum("android.graphics.Paint$Cap", ["BUTT", "ROUND", "SQUARE"]);
 
-  const cssColor = (c) => { const a = (c >>> 24) / 255; return "rgba(" + ((c >> 16) & 255) + "," + ((c >> 8) & 255) + "," + (c & 255) + "," + (a === 1 ? 1 : Math.round(a * 1000) / 1000) + ")"; };
+  const cssCache = new Map();
+  const cssColor = (c) => {
+    let s = cssCache.get(c);
+    if (s === undefined) {
+      const a = (c >>> 24) / 255;
+      s = "rgba(" + ((c >> 16) & 255) + "," + ((c >> 8) & 255) + "," + (c & 255) + "," + (a === 1 ? 1 : Math.round(a * 1000) / 1000) + ")";
+      if (cssCache.size < 8192) cssCache.set(c, s);
+    }
+    return s;
+  };
+  // only touch ctx.fillStyle when the colour really changes (particles/rects call this thousands of times per frame)
+  const setFill = (ctx, c) => { const s = cssColor(c); if (ctx.$fs !== s) { ctx.fillStyle = s; ctx.$fs = s; } };
   class android_graphics_Paint extends java_lang_Object {
     constructor() {
       super(); this.color = 0xFF000000 | 0; this.style = null; this.sw = 0; this.ts = 12; this.align = null; this.tf = null; this.aa = false; this.fb = false; this.pe = null; this.cap = null;
@@ -302,7 +313,7 @@
     getRowBytes$() { return this.w * (this.cfg === android_graphics_Bitmap$Config.S$ARGB_8888 ? 4 : 2); }
     getByteCount$() { return this.getRowBytes$() * this.h; }
     copy$Bitmap$Config$Z(cfg) { const b = android_graphics_Bitmap.$make(this.w, this.h, cfg); b.ctx.drawImage(this.cv, 0, 0); return b; }
-    eraseColor$I(c) { this.ctx.setTransform(1, 0, 0, 1, 0, 0); this.ctx.clearRect(0, 0, this.w, this.h); if ((c >>> 24) !== 0 || this.cfg === android_graphics_Bitmap$Config.S$RGB_565) { this.ctx.fillStyle = cssColor(c); this.ctx.fillRect(0, 0, this.w, this.h); } }
+    eraseColor$I(c) { this.ctx.setTransform(1, 0, 0, 1, 0, 0); this.ctx.clearRect(0, 0, this.w, this.h); if ((c >>> 24) !== 0 || this.cfg === android_graphics_Bitmap$Config.S$RGB_565) { setFill(this.ctx, c); this.ctx.fillRect(0, 0, this.w, this.h); } }
     getPixel$I$I(x, y) {
       if (x < 0 || y < 0 || x >= this.w || y >= this.h) throw new java_lang_IllegalArgumentException().$init$String("x/y must be < bitmap.width()/height()");
       const d = this.ctx.getImageData(x, y, 1, 1).data; return ((d[3] << 24) | (d[0] << 16) | (d[1] << 8) | d[2]) | 0;
@@ -397,21 +408,21 @@
     drawRect$F$F$F$F$Paint(l, t, r, b, p) {
       const ctx = this.ctx;
       if (p.style === android_graphics_Paint$Style.S$STROKE) { this.$stroke(p); ctx.strokeRect(l, t, r - l, b - t); ctx.setLineDash([]); }
-      else { ctx.fillStyle = cssColor(p.color); ctx.fillRect(l, t, r - l, b - t); }
+      else { setFill(ctx, p.color); ctx.fillRect(l, t, r - l, b - t); }
     }
     drawRect$Rect$Paint(r, p) { this.drawRect$F$F$F$F$Paint(r.left, r.top, r.right, r.bottom, p); }
     drawCircle$F$F$F$Paint(cx, cy, r, p) {
       const ctx = this.ctx; ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2);
-      if (p.style === android_graphics_Paint$Style.S$STROKE) { this.$stroke(p); ctx.stroke(); ctx.setLineDash([]); } else { ctx.fillStyle = cssColor(p.color); ctx.fill(); }
+      if (p.style === android_graphics_Paint$Style.S$STROKE) { this.$stroke(p); ctx.stroke(); ctx.setLineDash([]); } else { setFill(ctx, p.color); ctx.fill(); }
     }
     drawLine$F$F$F$F$Paint(x0, y0, x1, y1, p) { const ctx = this.ctx; this.$stroke(p); ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke(); ctx.setLineDash([]); }
-    drawPoint$F$F$Paint(x, y, p) { this.ctx.fillStyle = cssColor(p.color); this.ctx.fillRect(x, y, 1, 1); }
+    drawPoint$F$F$Paint(x, y, p) { setFill(this.ctx, p.color); this.ctx.fillRect(x, y, 1, 1); }
     drawText$String$F$F$Paint(t, x, y, p) {
-      const ctx = this.ctx; ctx.font = p.$font(); ctx.fillStyle = cssColor(p.color);
+      const ctx = this.ctx; ctx.font = p.$font(); setFill(ctx, p.color);
       ctx.textAlign = p.align === android_graphics_Paint$Align.S$CENTER ? "center" : p.align === android_graphics_Paint$Align.S$RIGHT ? "right" : "left";
       ctx.textBaseline = "alphabetic"; ctx.fillText(t, x, y);
     }
-    drawColor$I(c) { this.ctx.fillStyle = cssColor(c); this.ctx.fillRect(0, 0, this.w, this.h); }
+    drawColor$I(c) { setFill(this.ctx, c); this.ctx.fillRect(0, 0, this.w, this.h); }
     drawARGB$I$I$I$I(a, r, g, b) { this.drawColor$I(((a & 255) << 24) | ((r & 255) << 16) | ((g & 255) << 8) | (b & 255)); }
     drawRGB$I$I$I(r, g, b) { this.drawARGB$I$I$I$I(255, r, g, b); }
     save$() { this.ctx.save(); return 0; } restore$() { this.ctx.restore(); }
